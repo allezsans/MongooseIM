@@ -23,6 +23,7 @@
 -export([start/2, stop/1]).
 
 -export([create_instant_room/4]).
+-export([room_destroyed/2]).
 -export([invite_to_room/5]).
 -export([send_message_to_room/4]).
 -export([kick_user_from_room/3]).
@@ -55,6 +56,18 @@ commands() ->
         {owner, binary},
         {nick, binary}]},
       {result, {name, binary}}],
+
+     [{name, delete_muc_room},
+      {category, <<"mucs">>},
+      {desc, <<"Delete a MUC room.">>},
+      {module, ?MODULE},
+      {function, room_destroyed},
+      {action, delete},
+      {identifiers, [host, name]},
+      {args,
+       [{host, binary},
+        {name, binary}]},
+      {result, ok}],
 
      [{name, invite_to_muc_room},
       {category, <<"mucs">>},
@@ -128,6 +141,15 @@ create_instant_room(Host, Name, Owner, Nick) ->
         {error, not_found} = E ->
             E
     end.
+
+room_destroyed(Host, Name) ->
+    R = jid:from_binary(room_address(Name, Host)),
+    case mod_muc:room_jid_to_pid(R) of
+         {ok, Pid} ->
+             gen_fsm:send_all_state_event(Pid, destroy);
+         {error, Reason} ->
+             {error, Reason}
+    end. 
 
 invite_to_room(Host, Name, Sender, Recipient, Reason) ->
     S = jid:binary_to_bare(Sender),
